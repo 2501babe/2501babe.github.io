@@ -1,9 +1,11 @@
-* {
-    display: inherit
+body {
+    margin: 40px auto;
+    max-width: 650px;
+    font: 18px/1.5 sans-serif;
+    padding: 0 10px;
 }
 
-body {
-    display: flex;
-    align-items : center;
-    justify-content : center;
+h1, h2, h3 {
+    line-height: 1.2;
+    text-align: center;
 }
