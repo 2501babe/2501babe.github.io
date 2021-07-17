@@ -1,6 +1,6 @@
 body {
     margin: 40px auto;
-    max-width: 650px;
+    max-width: 800px;
     font: 18px/1.5 sans-serif;
     padding: 0 10px;
 }
@@ -8,4 +8,14 @@ body {
 h1, h2, h3 {
     line-height: 1.2;
     text-align: center;
+}
+
+.section {
+    text-align: center;
+    font-weight: bold;
+}
+
+code {
+    font-family: monospace;
+    background-color: #eee;
 }

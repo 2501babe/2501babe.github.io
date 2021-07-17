@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>2501babe: solana 101</title>
+    <link rel="stylesheet" href="/style.css">
+  </head>
+
+  <body>
+    <h1>ok so what the fuck is the deal with solana anyway</h1>
+    <h2>an introduction to the solana blockchain</h2>
+
+    <p>this post is intended to give a rundown of solana for curious technicals. i assume you know how computer worky. i lean on comparisons to ethereum to explain some things but comprehensive eth knowledge is not important to make sense of this. im not gonna explain proof of stake but feel free to google "byzantine fault tolerance" and "cap theorem" if you want some pleasant light reading about a cs problem that is not complicated or annoying at all</p>
+
+    <p>this post may be of some interest to nontechnicals but im gonna be honest its probably too jargony. nevertheless if you cant find something via google you can be like "what does x mean" on twitter and ill probably tell you unless its too complicated</p>
+
+    <p>most of this post is me summarizing the solana docs. i think the material in them is very valuable and comprehensive but its probably adapted from someones notes or something. in particular its not organized into dependency ordered chapters. ie, if you read in order some stuff in earlier sections is incomprehensible until you read later ones. i got high and binged the entire thing in one day flipping back and forth as needed so now you dont have to</p>
+
+    <p>everything in this post is 100% true and correct unless something changes or someone shows me im wrong in which case i will silently edit the post to be right and my claim of infallibility still stands</p>
+
+    <div class="section">* * *</div>
+
+    <h3>overview</h3>
+
+    <p>to put it in a sentence: solana is a proof of stake blockchain plus some extra shit</p>
+
+    <p>the most important extra shit is a mechanism they call proof of history. validators are constantly hashing the previous output of a hash and periodically publishing one of those hashes plus the number of iterations required to reproduce it. this is cool because you must produce new hashes in serial, but you can verify a collection of hash checkpoints in parallel</p>
+
+    <p>the hash chain is canonical across validators, but validators can produce them independently without needing to wait for committed blocks. these hashes are used as a rudimentary clock, to be able to prove things happened in a certain order, and that some arbitrary amount of time elapsed between them. sharing a clock simplifies some of the woefully complex coordination problems inherent in blockchains</p>
+
+    <p>most of the other extra shit is straightforward optimizations. people love to trot out the marketing terms solana uses for these and attempt to explain them in detail but for our purposes its not really important. ill just summarize</p>
+
+    <p>validators use Not Bittorrent to fetch blocks and dont need to wait for all the pieces to presume correctness. they also claim to offload data to Not Filecoin so validators can run light clients but someone in their discord told me they never implemented that so idk</p>
+
+    <p>instead of flood filling the mempool theres deterministic leader selection and nodes forward transactions to future leaders. the client declares what memory locations it needs beforehand so the runtime can prefetch and mmap it. they run multiple transactions on the same program in parallel with simd instructions, they offload signature verification to gpus. thats basically it</p>
+
+    <p>solana uses ed25519 for encryption and sha256 for hashing. they chose sha256 specifically because all the effort put into btc asics means its unlikely to have a surprise optimization that would trivialize proof of history. pubkeys are used as addresses without truncation. theres an easter egg that you can use base64 for supposed perf improvement but everyone uses base58 anyway</p>
+
+    <p>solana likes to claim in its marketing material that it is way faster with zero tradeoffs. this claim is stupid. it is very true that solana optimizations are legit, often very clever. its not like bsc which just cranked up some numbers and kicked the can down the road</p>
+
+    <p>but what is being traded against, dear developer, is your time and your sanity. much of the complexity that solana requires to achieve the tps it does is simply placed on your doorstep. compared to ethereum, the system is much more complicated and difficult to reason about, and much must be done by hand</p>
+
+    <p>i think this tradeoff is fine. the chain is really fast. its worth it. but its better to be honest about it rather than try and pretend it doesnt exist</p>
+
+    <p>in time a lot more of this will probably be abstracted over. anchor does a good job already of normalizing the client/chain interface. but you had better understand whats going on underneath it or youre gonna be in for pain sooner or later</p>
+
+    <p>i am absolutely convinced the reason solana has not had any scams or rugs of note other than weak presale or pnd bullshit is because scammers are not smart enough to build for it yet. this will change. one of the reasons i want to write about solana is because very few solana devs seem to have a redteam mindset. im gonna write a lot more about this kinda stuff in particular soon</p>
+
+    <div class="section">* * *</div>
+
+    <h3>programs and accounts</h3>
+
+    <p>the biggest practical difference solana has from ethereum is that it very aggressively separates code and data. this has a number of implications for how the system is structured, and accounts in particular are the biggest source of confusion for ethereum devs coming to solana</p>
+
+    <p>programs are stateless contracts. theres nothing like class variables or globals or whatever you get in solidity, all data is explicit pass by reference from the outside</p>
+
+    <p>you write programs in rust with the solana-sdk library. theres a thing called xargo to cross-compile to ebpf, you just need an extra config file for that. <code>cargo build-bpf</code> and the deploy command will be displayed to you after. theres a built-in program upgrade feature</p>
+
+    <p>accounts are buffers. i dont know why they call them accounts it confuses the shit out of everyone. theres a function <code>create_account</code>. its calloc on the blockchain i swear thats all it is</p>
+
+    <p>you create an account with a declared size in bytes and can store arbitrary binary data in it. accounts cannot be realloced. (but now that i think of it i havent checked yet if you can recreate them after freeing them thats a interesting question.) accounts can also store lamports, the kawaii name for the solanacoin smallest unit. in theory you pay rent for storage but theres a price per byte at which you are exempt so everyone just does that</p>
+
+    <p>an account is owned by the system program by default. the system program has basic functions for creating more accounts and sending lamports and such and such. acocunts can be assigned a new owner once and only once. this owner is always a program, which has permission to deduct lamports from the account and modify its data however it wishes</p>
+
+    <p>account addresses are ed25519 pubkeys, and the corresponding privkey is retained by the user for signatures. solana devs like to call this "authority" to avoid adding a confusing second meaning to "owner"</p>
+
+    <p>programs are not special: they are also data, stored in accounts. these accounts are flagged as executable and ownership is transferred to an ebpf loader program. program accounts are required to be rent exempt as a rule and i think you cant dealloc them either. various places refer to a program id, this is just the address of the account its stored in</p>
+
+    <p>one advantage of the program/account model is you can have one generic program that operates on various data. the best example of this is the spl token program. to create a new token, you dont need to deploy code like you do on ethereum. you create an account that can mint tokens, and more accounts that can receive them. the mint address uniquely determines the token type, and these are all passed as arguments to one static program instance</p>
+
+    <div class="section">* * *</div>
+
+    <h3>transactions and instructions</h3>
+
+    <p>the basic operational unit on solana is an instruction. an instruction is one call into a program. one or more instructions can be bundled into a message. a message plus an array of signatures constitutes a transaction</p>
+
+    <p>this is very important for ethereum devs to understand: end users can construct atomic transactions that call multiple programs. i dont think anyone really appreciates the security implications of this fact yet but it will adorn many an exploit writeup introductory paragraph someday</p>
+
+    <p>i wont bore you with the full binary spec. the important thing is you must forward-declare <em>every</em> account you intend to read from or write to. that may include: the system program, the token program, your account, your token accounts, any necessary program accounts, etc. this <em>also</em> includes special addresses called sysvars if the program needs to know facts like how much is rent or what time is it</p>
+
+    <p>this is the cost of their prefetching and parallel execution optimizations. i promise you that you will learn to hate this, especially since the accounts are passed as an <em>array</em>, so you need to get the order right</p>
+
+    <p>writing to an account requires the authority to do so, which is proved by signing the full message with the appropriate privkey. non-signed accounts may also be writable, for instance if owned by the program your instruction calls. a transaction is uniquely identified by its first message signature</p>
+
+    <p>the last important thing a message contains is a blockhash, which is what it sounds like. i specifically say "message" to communicate that it is part of the signed data. it serves the same purpose as ethereum nonces</p>
+
+    <p>the blockhash is also used as a ttl by requiring it be no more than 32 blocks old. this means if a transaction isn't confirmed in a certain amount of time, it can never be confirmed, and you can safely regard it as expired</p>
+
+    <p>solana also provides a nonce mode for those who want it, to enable airgapped signing</p>
+
+    <div class="section">* * *</div>
+
+    <h3>program derived addresses</h3>
+
+    <p>theres a special kind of account which a program can sign for without a privkey. given a seed of arbitrary bytes plus a program id, you can generate what looks like an ed25519 pubkey. as long as it is <em>not</em> a valid key (ie not on the curve) theres a mechanism for solana to fake a signature for you. the reason for the (in)validity check is to ensure a privkey by definition cannot exist</p>
+
+    <p>this ends up being kind of annoying because not every combination of seed and program id is usable. theres special functions to take them and increment a nonce until you get a (in)valid pubkey tho</p>
+
+    <p>programs want to be able to sign accounts for cross-program invocation. eg, if you want your program to transfer lamps to a user account, you can have the program sign its own account and <code>invoke_signed</code> the system program with its account as the "from" address and the user account as "to"</p>
+
+    <p>a common pattern is to use addresses derived from a namespace and a user pubkey for efficient key/value mappings, keyed off the user</p>
+
+    <div class="section">* * *</div>
+
+    <h3>runtime</h3>
+
+    <p>solana really earns the mainnet-beta designation once you get into runtime constraints. every instruction has fixed compute budgets which cannot be exceeded. there are hardcoded limits on ebpf instructions, log messages, stack size, call depth, and number of cross-program invokes. reentrancy is banned except for self-reentrancy. you get 32kb of heap and no free or realloc</p>
+
+    <p>there is no mechanic to pay for more compute, so if you cant fit in the budget you better make it fit. i live in terror of writing a working program that calls another program, and later its devs change it to be more expensive, and now my program cant fit in budget anymore and breaks forever</p>
+
+    <p>there is also a 1232 byte limit on messages, which is egregiously low. because of the very strict compute budgets, cpi is for in-and-out type of stuff, <em>not</em> for legos. in theory, youd use multi-instruction transactions for that</p>
+
+    <p>but... in practice its hard to fit complex operations into the size limit because you need to list a bajillion addresses for everything. theres talk of a new transaction format coming that may or may not improve this situation</p>
+
+    <div class="section">* * *</div>
+
+    <h3>client</h3>
+
+    <p>clients submit transactions and fetch data from rpc nodes using jsonrpc payloads sent to 8899. theres also a pubsub websocket at 8900 but i havent used it yet. one thing that takes some getting used to is the fact that, unlike solidity, programs have no read interfaces. write-only. if you need to read, you have to pull the raw data by account address via rpc and deserialize it yourself</p>
+
+    <p>solana-web3 doesnt have any documentation other than typescript types but theres enough stray references to "wei" in there i think i might be forked from the eth equivalent? idk, <code>sendAndConfirmTransaction</code> is usually the function you want. this is not a programming tutorial but i will warn you that forming proper transactions is tricky, look up some examples and good luck</p>
+
+    <p>the most important debugging advice i know that no one ever told me: turn on preflight checks when testing client code, turn them off when testing onchain programs. transactions are sanity checked on the client before theyre submitted but the errors and logging you get from the chain are way better. theres a options object that you can pass into the send functions for this</p>
+
+    <p>also for local testing you can turn commitment down to <code>processed</code> so you dont have to wait for confirmation to see a result</p>
+
+    <div class="section">* * *</div>
+
+    <h3>cli</h3>
+
+    <p>in contrast with the somewhat arcane clientside experience, the cli tools are really really good. curlshell the solana-install version manager and youre set up</p>
+
+    <p><code>solana-test-validator</code> does exactly what it says and literally you just have to run that and it works, i love it. <code>solana logs</code> gives you logs which you can print to in programs with <code>msg!</code> theres a lot more but seriously i have no complaints here and its all very straightforward</p>
+
+    <div class="section">* * *</div>
+
+    <h3>calling convention</h3>
+
+    <p>this is my favorite part. all solana programs expose a single entrypoint that provides as arguments the program id, accounts array, and instruction data. whats instruction data? thats right baby, a u8 array</p>
+
+    <p>serialization and dispatch are your problem. if youre calling somone elses program, you have to rely on them giving you client code or documentation to be able to determine how to properly form an instruction because all interfaces are opaque and ad hoc</p>
+
+    <p>have fun</p>
+
+    <div class="section">* * *</div>
+
+    <h3>anchor</h3>
+
+    <p>this isnt an anchor tutorial but ill say its pretty cool. the main benefits are it imposes a dispatch table interface similar to solidity, handles serialization and deserialization for you, and lets you pass accounts as objects instead of arrays</p>
+
+    <p>ive been using it some but i dont have enough experience yet to explain how to use it really well. but you better learn the stuff its abstracting over first or ill judge you super hard!!</p>
+
+    <div class="section">* * *</div>
+
+    <h3>conclusion</h3>
+
+    <p>congratulations now you know solana. well jk but i think this is a good overview to have a strong vibe on how it differs from ethereum, and a solid base to learn how to dev on it without being like "what the fuck is this what is that" all the time</p>
+
+    <p>i hope you enjoyed my ramblings. this is not the last youve heard from me!! my next post i think will be "things about solana to make you go hmm." in which i muse about various exciting attacks only possible in the world of solanaland, along with evil ways to try and work around their resource limits, and various other manner of exciting things. for fun and profit!</p>
+
+    <p style="text-align:center"><a href="/index.html">home</a></p>
+  </body>
+</html>
