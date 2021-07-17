@@ -63,13 +63,13 @@
 
     <p>accounts are buffers. i dont know why they call them accounts it confuses the shit out of everyone. theres a function <code>create_account</code>. its calloc on the blockchain i swear thats all it is</p>
 
-    <p>you create an account with a declared size in bytes and can store arbitrary binary data in it. accounts cannot be realloced. (but now that i think of it i havent checked yet if you can recreate them after freeing them thats a interesting question.) accounts can also store lamports, the kawaii name for the solanacoin smallest unit. in theory you pay rent for storage but theres a price per byte at which you are exempt so everyone just does that</p>
+    <p>you create an account with a declared size in bytes and can store arbitrary binary data in it. accounts cannot be realloced. (but now that i think of it i havent checked yet if you can recreate them after freeing them thats a interesting question.) accounts can also store lamports, the kawaii name for the solanacoin smallest unit. in theory you pay rent for storage but if you put two years worth of rent in the account then they let you be exempt so everyone just does that</p>
 
     <p>an account is owned by the system program by default. the system program has basic functions for creating more accounts and sending lamports and such and such. acocunts can be assigned a new owner once and only once. this owner is always a program, which has permission to deduct lamports from the account and modify its data however it wishes</p>
 
     <p>account addresses are ed25519 pubkeys, and the corresponding privkey is retained by the user for signatures. solana devs like to call this "authority" to avoid adding a confusing second meaning to "owner"</p>
 
-    <p>programs are not special: they are also data, stored in accounts. these accounts are flagged as executable and ownership is transferred to an ebpf loader program. program accounts are required to be rent exempt as a rule and i think you cant dealloc them either. various places refer to a program id, this is just the address of the account its stored in</p>
+    <p>programs are not special: they are also data, stored in accounts. these accounts are flagged as executable and ownership is transferred to an ebpf loader program. program accounts are required to have enough lamps to qualify for rent exemption. and i think you cant dealloc them either. various places refer to a program id, this is just the address of the account its stored in</p>
 
     <p>one advantage of the program/account model is you can have one generic program that operates on various data. the best example of this is the spl token program. to create a new token, you dont need to deploy code like you do on ethereum. you create an account that can mint tokens, and more accounts that can receive them. the mint address uniquely determines the token type, and these are all passed as arguments to one static program instance</p>
 
