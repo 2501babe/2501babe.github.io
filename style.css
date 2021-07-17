@@ -1,4 +1,9 @@
+* {
+    display: inherit
+}
+
 body {
-    font: sans-serif;
-    max-width: 80em;
+    display: flex;
+    align-items : center;
+    justify content : center;
 }
