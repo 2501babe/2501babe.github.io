@@ -15,6 +15,12 @@ h1, h2, h3 {
     font-weight: bold;
 }
 
+pre {
+    background-color: #eee;
+    border: 1px solid black;
+    padding: 1em;
+}
+
 code {
     font-family: monospace;
     background-color: #eee;
