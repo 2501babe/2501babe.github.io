@@ -19,45 +19,53 @@
 
     <div class="section">* * *</div>
 
+    <h3>introduction</h3>
+
     <p>oki i know i said id write other posts first but ive been working in anchor more days than not for a few months now. so i thought itd be good to do this one. like i said anchor is still a moving target but its been gaining coherency lately (i dont have to work as hard as i used to when i update my codebases every like two weeks omg) so i think this should be useful for a bit in the future too</p>
 
-    <p>this post is aimed at programmers who are already basically familiar with solana. you should know what accounts are, whats the difference between transactions and instructions, shit like that. if not then theres a <a href="https://2501babe.github.io/posts/anchor101.html">terrible post by some moron</a> to get you through it. although anchor makes a lot of things easier im strongly of the opinion you need to understand what youre abstracting over. cpi = cross-program invocation pda = program-derived address otherwise im not weird about acronyms</p>
+    <p>this post is aimed at programmers who are already basically familiar with solana. you should know what accounts are, whats the difference between transactions and instructions, shit like that. if not then theres a <a href="https://2501babe.github.io/posts/anchor101.html">terrible post by some moron</a> to get you through it. although anchor makes a lot of things easier im strongly of the opinion you need to understand what youre abstracting over</p>
 
     <p>if youre decent at programming but dont know rust you can probably follow along anyway. rust is like c on training wheels plus haskell on training wheels with the commitment to minimalism of c++ and the syntactical beauty of javascript. but its actually not a bad language to write and the documentation and tooling is top notch</p>
 
     <p>code examples are illustrative not comprehensive. this isnt a replacement for the <a href="https://project-serum.github.io/anchor/tutorials/tutorial-0.html#defining-a-program">anchor tutorial</a> or the <a href="https://docs.rs/anchor-lang/0.18.0/anchor_lang/index.html">docs</a>. im just trying to give you a high level overview so you can see whats up</p>
 
+    <p>cpi = cross-program invocation, pda = program-derived address, otherwise im not weird about acronyms</p>
+
     <div class="section">* * *</div>
 
-    <p>solana is fucking complicated. it is that way for good reasons. but there is a lot of shit it expects you to just deal with that any reasonable person would refuse</p>
+    <h3>words</h3>
+
+    <p>solana is fucking complicated. it is that way for good reasons, but there is a lot of shit it expects you to just deal with that any reasonable person would refuse</p>
 
     <p>but we arent reasonable people. we are faang cringelords desperately larping as iconoclasts, vc losers scared of not getting rich fast enough, gambling addicts trying to pose as technically minded, and emotionally crippled autistic cats distracted by laser pointers. that is why we are here</p>
 
-    <p>the overarching point to anchors existence is ergonomic. the main things it does imo are:</p>
+    <p>the overarching point to anchors existence is ergonomic. the main things it does are:</p>
 
     <ul>
-        <li>solana programs have one entrypoint that accepts arbitrary bytes. anchor lets you define individual functions in rust that accept named typed parameters</li>
+        <li>solana programs have one entrypoint that accepts arbitrary bytes. anchor lets you define individual functions in rust that accept named, typed parameters. dispatch is handled automatically</li>
 
         <li>solana programs have one entrypoint that accepts arbitrary bytes. anchor generates json files containing your functional interface that can be used clientside for codegen</li>
 
         <li>solana expects you to pass accounts in as an array and access them by index. anchor lets you name them in rust and pass them as javascript objects. you also declare signers and writables in the program and the client sets the flags for you</li>
 
-        <li>anchor automatically serializes and deserializes solana account data on both sides of the wire based on structs declared in rust</li>
+        <li>anchor automatically serializes and deserializes solana account data on both sides of the wire, again based on structs declared in rust</li>
 
         <li>anchor provides a set of macros to write declarative constraints on accounts that vastly simplify input validation and properly isolate it from input handling</li>
     </ul>
 
-    <p>anchor could be compared to solidity sorta. it cant quite replicate the easy back and forth you get with solidity contracts because reading to and writing from solana are fundamentally distinct operations. but its clearly been made with solidity in mind and solves a lot of the same problems</p>
+    <p>anchor could be compared to solidity sorta. it cant quite replicate the easy back and forth you get with solidity contracts because reading from and writing to solana are fundamentally distinct operations. but its clearly been made with solidity in mind and solves a lot of the same problems</p>
 
-(sidebar: this does not mean vanilla solana is like evm bytecode if you say that i will cry. ebpf bytecode is like evm bytecode. anchor is just extra rust on top of rust)
+    <p>(this does not mean vanilla solana is like evm bytecode if you say that i will cry. ebpf bytecode is like evm bytecode. anchor is just extra rust on top of rust)</p>
 
-    <p>personally i use anchor for everything lately. its super fast to prototype in: when i have "i wonder what happens if..." thoughts, i often just write it out instead of reading source or asking around. its good to develop in in general too. at this point id only start a new project in raw solana</p>
+    <p>personally i use anchor for everything lately. its super fast to prototype in: when i have "i wonder what happens if..." thoughts, i often just write it out instead of reading source or asking around. its good to develop in in general too. at this point id only start a new project in raw solana if i knew from the beginning i would need to optimize the shit out of it</p>
 
-    <p>a couple months ago i was more skeptical. the abstractions weirder and more fucked up (associated accounts, state singletons, three different account types...) anchor got in my way enough i used it for the interfaces and otherwise wrote vanilla solana</p>
+    <p>a couple months ago i was more skeptical. the abstractions were weirder and more fucked up (associated accounts, state singletons, three different account types...) and anchor got in my way enough i used it for the interface boundary and otherwise wrote vanilla solana</p>
 
-    <p>but now its really good. it does a lot more. ive consistently been deleting code and replacing it with account annotations that do the same things behind the scenes every few releases. and constraints can have readable errors now instead of meangingless hex codes now!! so i dont have to feel bad sacrificing user friendliness for dev readability. but ill get to that in a bit</p>
+    <p>but now its really good. it does a lot more. ive consistently been deleting code and replacing it with account annotations that do the same things behind the scenes every few releases. and as of 0.18.0 constraints can have readable errors instead of meangingless hex codes!! so i dont have to feel bad sacrificing user friendliness for dev readability. but ill get to what that means in a bit</p>
 
     <div class="section">* * *</div>
+
+    <h3>code</h3>
 
     <p>again, code examples are more a visual aid than teaching tool. the anchor tutorial is good and kept up to date version to version. you can get an idea here and then fill out the picture with that, or you can start with that and use this as a quick reference. whatever suits your style</p>
 
@@ -69,7 +77,7 @@ declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 #[deny(unused_must_use)]
 pub mod example {
     use super::*;
-    pub fn initialize(ctx: Context<Initialize>) -> ProgramResult {
+    pub fn initialize(ctx: Context&lt;Initialize&gt;) -&gt; ProgramResult {
         Ok(())  
     }
 }
@@ -78,9 +86,15 @@ pub mod example {
 pub struct Initialize {}
 </pre></code>
 
-    <p>this is a full working program, almost exactly the one <code>anchor init</code> spits out. you have to declare your program id with that macro, its a huge pain honestly. the bulk of the program goes in a module under the <code>#[program]</code> macro. i always add <code>#[deny(unused_must_use)]</code> to elevate ignoring a <code>Result</code> from a compiler warning to a compiler error</p>
+    <p>this is a full working program, almost exactly the one <code>anchor init</code> spits out<p>
 
-    <p>every <code>pub fn</code> in the module is exposed as a client-callable program function. the first arg is always <code>Context<T></code> and corresponds to the solana accounts array and program id. below that is the presently useless struct for those accounts, derive <code>Accounts</code> and dont ask questions. context structs to functions can be one to many, this is sometimes useful like if two calls are inverses of each other</p>
+    <p>you have to declare your program id with <code>declare_id!</code>, its a huge pain honestly. the bulk of the program goes in a module under the <code>#[program]</code> macro. i always add <code>#[deny(unused_must_use)]</code> to elevate ignoring <code>Result&lt;T&gt;</code> from a compiler warning to a compiler error</p>
+
+    <p>every <code>pub fn</code> in the module is exposed as a client-callable program function. the first arg is always <code>Context&lt;T&gt;</code> and corresponds to the solana accounts array and program id</p>
+
+    <p>then below that is the (presently useless) struct for those accounts, derive <code>Accounts</code> and dont ask questions</p>
+
+    <p>account structs can be reused for multiple functions, this is sometimes useful like if two calls are inverse operations of each other</p>
 
 <pre><code>const anchor = require("@project-serum/anchor");
 
@@ -89,7 +103,9 @@ const program = anchor.workspace.Example;
 await program.rpc.initialize();
 </pre></code>
 
-    <p>this is the minimal js needed to call that program. <code>Provider</code> encapsulates connection and wallet, its actually kinda nice because it can handle wallet extensions that hold their own keys. <code>anchor.workspace</code> loads the program but doesnt work in the browser lmao. <code>program.rpc</code> is the simplest interface with a program and calls it directly with the default provider. there are also <code>program.transaction</code> and <code>program.instruction</code> namespaces to get the relevant objects if you need to do extra stuff with them</p>
+    <p>this is the minimal js needed to call that program</p>
+
+    <p><code>Provider</code> encapsulates connection and wallet, its actually kinda nice because it can handle getting signatures from wallet extensions that hold their own keys. <code>anchor.workspace</code> loads the program but doesnt work in the browser lmao. <code>program.rpc</code> is the simplest interface with a program and calls it directly with the default provider. there are also <code>program.transaction</code> and <code>program.instruction</code> namespaces to get the relevant objects if you need to do extra stuff with them</p>
 
 <pre><code>{
   "version": "0.0.0",
@@ -109,31 +125,33 @@ await program.rpc.initialize();
     <p>from this point forward code will be relevant snippets only. you can see full programs in the tutorial</p>
 
 
-    <pre><code>pub fn initialize(ctx: Context<Initialize>, n: u64, s: String) -> ProgramResult</pre></code>
+    <pre><code>pub fn initialize(ctx: Context&lt;Initialize&gt;, n: u64, s: String) -&gt; ProgramResult</pre></code>
 
     <pre><code>await program.rpc.initialize(new anchor.BN(1), "hi");</pre></code>
 
-    <p>arguments can be added to functions. on the front, you pass args to your rpc call as shown. you may need to wrap numbers as bignums but otherwise the rust/js correspondences are usually straightforward. an <code>Option<T></code> parameter can be passed as just the value for <code>Some</code> or <code>null</code> for <code>None</code></p>
+    <p>arguments can be added to functions. on the client, you pass args to your rpc call as shown. when you also have an accounts object, args go first</p>
 
-    <p>the only weird one is enums. if you have like <code>pub enum Color { Black, White }</code> then you pass it in js like <code>{ Black: {} }</code>. this sounds like a joke but its not</p>
+    <p>you may need to wrap numbers as bignums but otherwise the rust/js correspondences are usually straightforward. an <code>Option&lt;T&gt;</code> arg can be passed as just the value for <code>Some</code> or <code>null</code> for <code>None</code>. the only weird one is enums. if you have like <code>pub enum Color { Black, White }</code> then you pass it in js like <code>{ Black: {} }</code>. this sounds like a joke but its not</p>
 
 <pre><code>#[derive(Accounts)]
-pub struct Initialize<'info> {
+pub struct Initialize&lt;'info&gt; {
     #[account(mut)]
-    pub authority: Signer<'info>,
+    pub authority: Signer&lt;'info&gt;,
     #[account(
         init,
         payer = authority,
     )]
-    pub state: Account<'info, State>, 
-    pub rent: Sysvar<'info, Rent>,
-    pub system_program: Program<'info, System>,
+    pub state: Account&lt;'info, State&gt;, 
+    pub rent: Sysvar&lt;'info, Rent&gt;,
+    pub system_program: Program&lt;'info, System&gt;,
 }
 </pre></code>
 
-    <p>here is an actually useful accounts struct. the <code>Signer</code> account type and <code>#[account(mut)]</code> macro correspond to <code>isSigner</code> and <code>isWritable</code> flags. that second bigger macro implicitly calls <code>create_account</code> inside the program to allocate an account of the appropriate size for a serialized <code>State</code> struct. you can alternatively add the create instruction and annotate the account <code>#[account(zero)]</code> to assert the data is uninitialized</p>
+    <p>here is an actually useful accounts struct</p>
 
-    <p>also note sysvars and programs are both subtyped and these act as constraints. you can use <code>UncheckedAccount</code> to just pass arbitrary addresses in. you can wrap accounts in <code>Box</code> if (when) you have enough that anchor blows the stack deserializing them</p>
+    <p>the <code>Signer</code> account type and <code>#[account(mut)]</code> macro correspond to <code>isSigner</code> and <code>isWritable</code> flags. the second macro over <code>state</code> implicitly calls <code>create_account</code> inside the program to allocate an account of the appropriate size for a serialized <code>State</code> struct. you can alternatively add the create instruction and annotate the account <code>#[account(zero)]</code> to assert the data is uninitialized</p>
+
+    <p>also note sysvars and programs are both subtyped and these types act as constraints. you can use <code>UncheckedAccount</code> to pass arbitrary addresses in. you can wrap accounts in <code>Box</code> if (when) you have enough that anchor blows the stack deserializing them</p>
 
 <pre><code>#[account]
 #[derive(Default)]
@@ -143,7 +161,15 @@ pub struct State {
 }
 </pre></code>
 
-"the appropriate size" means eight bytes for what is called the account discriminator, plus however many bytes for the struct data. you need to derive default to let anchor automatically calculate it. be careful using this with variable-length types like strings and lists because the default is usually mempty. you can size the buffer by hand with <code>space</code> but remember to add eight
+"an account of the appropriate size" means eight bytes for a header called the discriminator plus however many bytes for the struct data. you can derive <code>Default</code> to let anchor automatically calculate it. be careful using this with variable-length types like strings and lists because their default value is usually mempty. alternatively you can size the buffer by hand in the constraint with <code>space</code> but remember to add eight
+
+<pre><code>function discriminator(name) {
+    let hash = sha256("account:" + name);
+    return Buffer.from(hash.substring(0, 16), "hex");
+}
+</pre></code>
+
+    <p>here is how you calculate account discriminators, where <code>name</code> is the struct name as a string literal. maybe it will come in handy someday. i like to use them for pda seeds to cut down on hardcoded magic numbers</p>
 
 <pre><code>program.rpc.initialize({
     accounts: {
@@ -156,15 +182,9 @@ pub struct State {
 });
 </pre></code>
 
-    <p>here is how you calculate account discriminators, where <code>name</code> is the struct name as a string literal. maybe it will come in handy someday. i like to use them for pda seeds instead of magic strings</p>
+    <p>calling our new version of <code>initialize</code> from js looks like this</p>
 
-<pre><code>function discriminator(name) {
-    let hash = sha256("account:" + name);
-    return Buffer.from(hash.substring(0, 16), "hex");
-}
-</pre></code>
-
-    <p>calling our new version of <code>initialize</code> looks like this. thats pretty much everything essential about the client so the rest will be just programs</p>
+    <p>thats pretty much everything essential about the client so the rest will be just programs</p>
 
 <pre><code>#[error]
 pub enum AdobeError {
@@ -181,23 +201,23 @@ pub enum AdobeError {
 
 <pre><code>#[derive(Accounts)]
 #[instruction(pool_bump: u8)]
-pub struct AddPool<'info> {
+pub struct AddPool&lt;'info&gt; {
     #[account(mut)]
-    pub authority: Signer<'info>,
+    pub authority: Signer&lt;'info&gt;,
     #[account(
-        seeds = [&State::discriminator()[..]],
+        seeds = [&amp;State::discriminator()[..]],
         bump = state.bump,
         has_one = authority,
     )]
-    pub state: Account<'info, State>,
-    pub token_mint: Account<'info, Mint>,
+    pub state: Account&lt;'info, State&gt;,
+    pub token_mint: Account&lt;'info, Mint&gt;,
     #[account(
         init,
-        seeds = [&Pool::discriminator()[..], token_mint.key().as_ref()],
+        seeds = [&amp;Pool::discriminator()[..], token_mint.key().as_ref()],
         bump = pool_bump,
         payer = authority,
     )]
-    pub pool: Account<'info, Pool>,
+    pub pool: Account&lt;'info, Pool&gt;,
     #[account(
         init,
         seeds = [TOKEN_NAMESPACE, token_mint.key().as_ref()],
@@ -206,7 +226,7 @@ pub struct AddPool<'info> {
         token::authority = state,
         payer = authority,
     )]
-    pub pool_token: Account<'info, TokenAccount>,
+    pub pool_token: Account&lt;'info, TokenAccount&gt;,
     #[account(
         init,
         seeds = [VOUCHER_NAMESPACE, token_mint.key().as_ref()],
@@ -215,56 +235,62 @@ pub struct AddPool<'info> {
         mint::decimals = token_mint.decimals,
         payer = authority,
     )]
-    pub voucher_mint: Account<'info, Mint>,
-    pub rent: Sysvar<'info, Rent>,
-    pub system_program: Program<'info, System>,
-    pub token_program: Program<'info, Token>,
+    pub voucher_mint: Account&lt;'info, Mint&gt;,
+    pub rent: Sysvar&lt;'info, Rent&gt;,
+    pub system_program: Program&lt;'info, System&gt;,
+    pub token_program: Program&lt;'info, Token&gt;,
 }
 </pre></code>
 
     <p>constraints are the most important shit in anchor that anchor doesnt just do for you. this is a lot but lets walk through it</p>
 
-    <p>first, the <code>#[instruction(...)]</code> macro deserializes program data so you can use it in constraints. this starts from the ninth byte of the buffer (the first eight are used for dispatch) and is not checked whatsoever so be careful</p>
+    <p>first, the <code>#[instruction(...)]</code> macro deserializes program data so you can use your function args in constraints. this starts from the ninth byte of the buffer (the first eight are used for dispatch) and is not checked whatsoever so be careful</p>
 
-<code>seeds</code> and <code>bump</code> assert the account address matches the pda generated by them. you dont need to give an arg to <code>bump</code> and it will just calculate it <code>has_one</code> is honestly kind of confusing i think but it checks that <code>state</code> has a field <code>authority</code> whose value matches the key of the account named <code>authority</code>
+    <p><code>seeds</code> and <code>bump</code> assert the account address matches the pda generated by them. you dont need to give an arg to <code>bump</code> and it will just calculate it</p>
+
+    <p><code>has_one</code> is honestly a tiny bit confusing but its a shorthand to check that <code>state</code> has a field <code>authority</code> whose value matches the key of the account named <code>authority</code></p>
 
     <p>futher down above <code>pool_token</code> and <code>voucher_mint</code> you see we initialize an spl token account and mint. the <code>TokenAccount</code> type is imported from a library but it works just fine. <code>token::mint</code> <code>token::authority</code> et al values are assigned as shown. this fully initializes the accounts and no cpi calls to the token program need be made by hand</p>
 
 <pre><code>#[account(mut, address = pool.pool_token)]
-pub pool_token: Account<'info, TokenAccount>,
+pub pool_token: Account&lt;'info, TokenAccount&gt;,
 #[account(mut, constraint =  user_token.mint == pool.token_mint)]
-pub user_token: Account<'info, TokenAccount>,
+pub user_token: Account&lt;'info, TokenAccount&gt;,
 </pre></code>
 
-    <p>in a later instruction we can see <code>address</code> constraints, which are a more explicit <code>has_one</code>, and raw <code>constraint</code> which evaluates any boolean expression. <code>constraint</code> can also return custom errors not by sticking one after an @ in it</p>
+    <p>in a different instruction from the same program, we can see <code>address</code> constraints, which are a more explicit  and backwards <code>has_one</code>, and raw <code>constraint</code> which evaluates any boolean expression. <code>constraint</code> can also return custom errors now by appending <code>@</code> and the error</p>
 
-    <p>you can see all account annotations <a href="https://docs.rs/anchor-lang/0.18.0/anchor_lang/prelude/derive.Accounts.html">here</a>. i am putting that link there mostly because i find it by going to docs.rs and typing "account" and randomly clicking the dozens of the results until i get the right one. so now i can just open this post and click my link instead</p>
+    <p>you can see all valid account annotations in the <a href="https://docs.rs/anchor-lang/0.18.0/anchor_lang/prelude/derive.Accounts.html">anchor docs</a>. i am putting that link there mostly because i find it by going to docs.rs and typing "account" and randomly clicking the dozens of results until i get the right one. so now i can just open this post and click my link instead</p>
 
     <p>im not gonna cover cpi but its pretty simple and you can see it in the tutorial</p>
 
     <div class="section">* * *</div>
 
+    <h3>words again</h3>
+
     <p>i dont really have much bad to say about anchor. if i had to come up with critiques tho itd be like...</p>
 
-    <ul>
-        <li>anchor is still a very fast moving target. expect to constantly be porting your program to new versions. this isnt as bad as it once was but the api is still under active development</li>
+    <p>anchor is still a very fast moving target. expect to constantly be porting your program to new versions. this isnt as bad as it once was but the api is still under active development</p>
 
-        <li>anchor adds a substantial compute cost, especially serializing all account data into rust types. when working on programs of sufficient complexity i do worry about having to junk parts of my anchor code and fall back to unchecked accounts and raw buffer manipulation. like it makes me feel i should have just done it in solana and dealt with the complexity to have a coherent codebase, rather than a weird frankenstein of the two styles</li>
+    <p>anchor adds a substantial compute cost, especially serializing all account data into rust types. (they have "zero-copy" wrappers now but as far as i can tell theyre using the term as a misnomer for lazy?) when working on programs of sufficient complexity i worry about having to junk parts of my anchor code and fall back to unchecked accounts and raw buffer manipulation. like it makes me feel i should have just done it in solana and dealt with the complexity to have a coherent codebase, rather than a weird frankenstein of the two styles</p>
 
-        <li>its not clear to me how safe anchor actually is. this is not a veiled accusation, this is a confession of ignorance. ive dabbled in langsec enough to be afraid of macro magic and automatic deserialization and the possibility of constraint annotations degrading to permissiveness etc. solana is a weird machine and this is weird machines on weird machines. i have nothing of substance to say here it just kinda makes my hairs stand up a lil sometimes</li>
-    </ul>
+    <p>its not clear to me how safe anchor actually is. this is not a veiled accusation, this is a confession of ignorance. ive dabbled in langsec enough to be afraid of macro magic and automatic deserialization and the possibility of constraint annotations degrading to permissiveness etc. solana is a weird machine and this is weird machines on weird machines. i have nothing of substance to say here it just kinda makes my hairs stand up a lil sometimes</p>
 
     <p>aside from that i guess my biggest concern about anchor is that it may have a ruby on rails effect. anchor, like rails, is a tool by domain experts primarily written to reduce boilerplate. it fundamentally exists to erase work that youve already done too many times and dont want to do again</p>
 
-    <p>but because it does this, that also makes it very easy for new people to come on without actually understanding what was erased. what i hope is that anchor is a way for more people to gradually get onboarded to solana, figure out the basics, and then dive deeper when theyre ready. what i dont hope is that they never peek under the sheets, living in the abstraction. because thats when everything seems to be going fine until suddenly one day its not</p>
+    <p>but because it does this, that also makes it very easy for new people to come on without actually understanding what was erased. what i hope is that anchor is a way for more people to gradually get onboarded to solana, figure out the basics, and then dive deeper when theyre ready. what i dont hope is that they never peek under the sheets, living in the abstraction. because thats when everything seems to be going fine until suddenly one day it very much is not</p>
 
-    <p>on the one hand shitty broken rails apps gave us twitter and github! on the other hand imagine if every fail whale was potentially a multimillion dollar loss of user funds. web2 is forgiving because unless you have uptime guarantees nothing actually happens if you accidentally break the site. whereas in web3 its uhhh not quite the same</p>
+    <p>on the one hand shitty broken rails apps gave us twitter and github! on the other hand imagine if every fail whale was potentially a multimillion dollar loss of user funds. web2 is forgiving because unless you have uptime guarantees nothing bad actually happens if you accidentally break your site. whereas in web3 its uhhh a little bit different!!</p>
+
+    <div class="section">* * *</div>
+
+    <h3>unrelated words</h3>
 
     <p>anyway! i hope this has been helpful. i really like anchor and think its one of the best things in the broader solana ecosystem</p>
 
-    <p>last time i promised to write about weird tricksy things i thought about solana but im not sure if or when im gonna do that one. i had some neat ideas of possible attacks, bizarre shit you could do with accounts, but... i think is kinda navel gazing unless i can actually make any use of it in the wild. i dont want to just list off a bunch of hypothetical things that i havent tried or really thought through</p>
+    <p>last time i promised to write about weird tricksy things i thought about solana but im not sure if or when im gonna do that one. i had some neat ideas of possible attacks, bizarre shit you could do with accounts, but... i think is kinda navel gazing unless i can use it in the wild. i dont want to just list off a bunch of hypothetical things that i havent tried or really thought through</p>
 
-    <p>soo ive been thinking of trying to vuln hunt public solana contracts to see ive id be any good at bug bounties or audits. id like to did into the runtime code at some point, actually understand how the weird machine ticks. im also interested in cosmos again lately and might do a similar grand tour of that tech stack. and writing lots of program code, and thinking about trading, and kinda wanna write strategies and bots... too much, too much! but its all in good fun</p>
+    <p>soo ive been thinking of trying to vuln hunt public solana contracts to see ive id be any good at bug bounties or audits. id like to dig into the runtime code at some point, actually understand how the weird machine ticks. im also interested in cosmos again lately and might do a similar grand tour of that tech stack. and writing lots of program code, and thinking about trading, and kinda wanna write strategies and bots... too much, too much! but its all in good fun</p>
 
     <p style="text-align:center"><a href="/index.html">home</a></p>
   </body>
