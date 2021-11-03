@@ -65,7 +65,7 @@
 
     <p>you create an account with a declared size in bytes and can store arbitrary binary data in it. accounts cannot be realloced. (but now that i think of it i havent checked yet if you can recreate them after freeing them thats a interesting question.) accounts can also store lamports, the kawaii name for the solanacoin smallest unit. in theory you pay rent for storage but if you put two years worth of rent in the account then they let you be exempt so everyone just does that</p>
 
-    <p>an account is owned by the system program by default. the system program has basic functions for creating more accounts and sending lamports and such and such. acocunts can be assigned a new owner once and only once. this owner is always a program, which has permission to deduct lamports from the account and modify its data however it wishes</p>
+    <p>an account is owned by the system program by default. the system program has basic functions for creating more accounts and sending lamports and such and such. accounts can be assigned a new owner once and only once. this owner is always a program, which has permission to deduct lamports from the account and modify its data however it wishes</p>
 
     <p>account addresses are ed25519 pubkeys, and the corresponding privkey is retained by the user for signatures. solana devs like to call this "authority" to avoid adding a confusing second meaning to "owner"</p>
 
